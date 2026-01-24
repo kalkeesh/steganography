@@ -1,106 +1,150 @@
 from tkinter import *
 from tkinter import messagebox
-from tkinter.filedialog import *
+from tkinter.filedialog import askopenfilename
 from stegano import exifHeader as stg
 import tkinter.font as font
-# decoding the file
+from PIL import Image, ImageTk
+import requests
+from io import BytesIO
+from datetime import datetime
+import uuid
+
+
+# ---------------- IMAGE LOADER ---------------- #
+def load_image_from_url(url, width=600, height=400):
+    headers = {"User-Agent": "Mozilla/5.0"}
+    response = requests.get(url, headers=headers)
+    response.raise_for_status()
+
+    pil_image = Image.open(BytesIO(response.content))
+    pil_image = pil_image.resize((width, height))
+    return ImageTk.PhotoImage(pil_image)
+
+
+# ---------------- DECODE SCREEN ---------------- #
 def Decode():
     Screen.destroy()
     DecScreen = Tk()
-    DecScreen.title("Decode- SECRET")
-    DecScreen.geometry("600x600+600+600")
-    DecScreen.config = PhotoImage(file="C:\\Users\\srini\\Downloads\\cyber-products-tech-fp1170x650.png")
-    label = Label(DecScreen, image= DecScreen.config)
-    label.place(x=0, y=0)
+    DecScreen.title("Decode - Secret Message")
+    DecScreen.geometry("600x600")
 
+    bg_img = load_image_from_url(
+        "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=600"
+    )
+    bg_label = Label(DecScreen, image=bg_img)
+    bg_label.image = bg_img
+    bg_label.place(x=0, y=0)
+
+    file_path = StringVar()
 
     def OpenFile():
-        global FileOpen
-        FileOpen = StringVar()
-        FileOpen = askopenfilename(initialdir="/Desktop", title="Select the File",
-                                   filetypes=(("only jpeg files", "*jpg"), ("all type of files", "*.*")))
+        file_path.set(
+            askopenfilename(
+                title="Select Encoded Image",
+                filetypes=(("JPEG files", "*.jpg"),)
+            )
+        )
 
     def Decoder():
-        myFont = font.Font(size=15)
-        Message = stg.reveal(FileOpen)
-        label3 = Label(text=Message)
-        label3['font'] = myFont
-        label3.place(relx=0.2, rely=0.3)
+        if not file_path.get():
+            messagebox.showerror("Error", "Please select an image")
+            return
 
-    myFont = font.Font(size=15)
-    SelectButton = Button(text="Select the file", command=OpenFile,fg='black', bg='red')
-    SelectButton['font'] = myFont
-    SelectButton.place(relx=0.1, rely=0.4)
-    myFont = font.Font(size=25)
-    DecodeButton = Button(text="Decode", command=Decoder,fg='black', bg='yellow')
-    DecodeButton['font'] = myFont
-    DecodeButton.place(relx=0.4, rely=0.5)
-# encoding the file
+        try:
+            message = stg.reveal(file_path.get())
+            Label(
+                DecScreen,
+                text=f"{message}",
+                font=("Arial", 14),
+                bg="white",
+                wraplength=400
+            ).place(relx=0.1, rely=0.4)
+        except Exception:
+            messagebox.showerror("Error", "No hidden message found")
+
+    Button(
+        DecScreen, text="Select Image", bg="red", fg="white",
+        command=OpenFile, font=("Arial", 14)
+    ).place(relx=0.1, rely=0.3)
+
+    Button(
+        DecScreen, text="Decode", bg="yellow", fg="black",
+        command=Decoder, font=("Arial", 18)
+    ).place(relx=0.4, rely=0.5)
+
+
+# ---------------- ENCODE SCREEN ---------------- #
 def Encode():
     Screen.destroy()
     EncScreen = Tk()
-    EncScreen.title("Encode- YOUR SECRET MESSAGE")
-    EncScreen.geometry("600x600+600+600")
-    EncScreen.config = PhotoImage(file="C:\\Users\\srini\\Downloads\\960x0.png")
-    label = Label(EncScreen, image=EncScreen.config)
-    label.place(x=0, y=0)
-    myFont = font.Font(size=15)
-    label = Label(text="Confidential Message")
-    label['font'] = myFont
-    label.place(relx=0.1, rely=0.2)
-    myFont = font.Font(size=15)
-    entry = Entry()
-    entry['font'] = myFont
-    entry.place(relx=0.5, rely=0.2)
-    myFont = font.Font(size=15)
-    label1 = Label(text="Name of the File")
-    label1['font'] = myFont
-    label1.place(relx=0.1, rely=0.3)
-    SaveEntry = Entry()
-    SaveEntry.place(relx=0.5, rely=0.3)
+    EncScreen.title("Encode - Hide Your Secret")
+    EncScreen.geometry("600x600")
+
+    bg_img = load_image_from_url(
+        "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=600"
+    )
+    bg_label = Label(EncScreen, image=bg_img)
+    bg_label.image = bg_img
+    bg_label.place(x=0, y=0)
+
+    Label(EncScreen, text="Secret Message", font=("Arial", 14)).place(relx=0.1, rely=0.2)
+    message_entry = Entry(EncScreen, width=30, font=("Arial", 14))
+    message_entry.place(relx=0.4, rely=0.2)
+
+    file_path = StringVar()
 
     def OpenFile():
-        global FileOpen
-        FileOpen = StringVar()
-        FileOpen = askopenfilename(initialdir="/Desktop", title="SelectFile",
-                                   filetypes=(("only jpeg files", "*jpg"), ("all type of files", "*.*")))
-
-        myFont = font.Font(size=15)
-        label2 = Label(text=FileOpen)
-        label2['font'] = myFont
-        label2.place(relx=0.5, rely=0.3)
+        file_path.set(
+            askopenfilename(
+                title="Select Image",
+                filetypes=(("JPEG files", "*.jpg"),)
+            )
+        )
 
     def Encoder():
-        Response = messagebox.askyesno("PopUp", "Do you want to encode the image?")
-        if Response == 1:
-            stg.hide(FileOpen, SaveEntry.get() + ".jpg", entry.get())
-            messagebox.showinfo("Pop Up", "Successfully Encoded")
-        else:
-            messagebox.showwarning("Pop Up", "Unsuccessful, please try again")
+        if not file_path.get() or not message_entry.get():
+            messagebox.showerror("Error", "Missing image or message")
+            return
 
-    myFont = font.Font(size=15)
-    SelectButton = Button(text="Select the file", command=OpenFile,fg='black', bg='red')
-    SelectButton['font'] = myFont
-    SelectButton.place(relx=0.1, rely=0.4)
-    myFont = font.Font(size=20)
-    EncodeButton = Button(text="Encode", command=Encoder,fg='white', bg='black')
-    EncodeButton['font'] = myFont
-    EncodeButton.place(relx=0.4, rely=0.5)
-# Initializing the screen
+        unique_name = f"encoded_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}.jpg"
+
+        try:
+            stg.hide(file_path.get(), unique_name, message_entry.get())
+            messagebox.showinfo("Success", f"Image saved as:\n{unique_name}")
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
+
+    Button(
+        EncScreen, text="Select Image", bg="red", fg="white",
+        command=OpenFile, font=("Arial", 14)
+    ).place(relx=0.1, rely=0.4)
+
+    Button(
+        EncScreen, text="Encode", bg="black", fg="white",
+        command=Encoder, font=("Arial", 18)
+    ).place(relx=0.4, rely=0.5)
+
+
+# ---------------- MAIN SCREEN ---------------- #
 Screen = Tk()
-Screen.title("Image Steganography by - KSK  ")
-Screen.geometry("600x600+600+600")
-bg_image = PhotoImage(file="C:\\Users\\srini\\Downloads\\post-image_file-Recent-Security-Technologies-for-IoT-Industry.png")
-label = Label( Screen, image = bg_image)
-label.place(x = 0, y = 0)
-# creating buttons
-myFont = font.Font(size=25)
-EncodeButton = Button(Screen,text="Encode", command=Encode,fg='black', bg='red')
-EncodeButton['font'] = myFont
-EncodeButton.pack(side=LEFT, padx=25, pady=20)
-DecodeButton = Button(Screen,text="Decode", command=Decode,fg='red', bg='yellow')
-DecodeButton.pack(side=RIGHT, padx=15, pady=20)
-DecodeButton['font'] = myFont
+Screen.title("Image Steganography - KSK")
+Screen.geometry("600x600")
 
+bg_img = load_image_from_url(
+    "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=600"
+)
+bg_label = Label(Screen, image=bg_img)
+bg_label.image = bg_img
+bg_label.place(x=0, y=0)
+
+Button(
+    Screen, text="Encode", bg="red", fg="white",
+    command=Encode, font=("Arial", 22)
+).pack(side=LEFT, padx=30, pady=20)
+
+Button(
+    Screen, text="Decode", bg="yellow", fg="black",
+    command=Decode, font=("Arial", 22)
+).pack(side=RIGHT, padx=30, pady=20)
 
 mainloop()
